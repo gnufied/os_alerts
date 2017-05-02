@@ -42,7 +42,7 @@ class PodAlert(object):
             print "None found. Everything is OK."
             return
         for pod in deadlined_pods:
-            pv_check = self.report_pod_pv(pod)
+            self.delete_deadline_pod(pod)
 
     def get_deadlined_pods(self):
         """
@@ -54,9 +54,20 @@ class PodAlert(object):
         pods = []
         for pod in pod_items:
             pod_status = pod['status']
-            if pod_status['phase'] == 'DeadlineExceeded':
+            if pod_status['phase'] == 'Failed' and pod_status.get('reason', '') == 'DeadlineExceeded':
                     pods.append(Pod(pod))
         return pods
+
+
+    def delete_deadline_pod(self, pod):
+        """
+        Delete deadline pod
+        """
+        print "Deleting pod %s in namespace %s" % (pod.pod_name, pod.namespace)
+        ret_val = subprocess.check_call(['oc', 'delete', 'pod', pod.pod_name, '-n', pod.namespace])
+        if ret_val != 0:
+            print "Error deleting pod %s in namespace %s" % (pod.pod_name, pod.namespace)
+
 
     def report_pod_pv(self, pod):
         """
