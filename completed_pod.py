@@ -21,11 +21,12 @@ class PVC(object):
 
 
 class Pod(object):
-    def __init__(self, pod_data):
+    def __init__(self, pod_data, pod_state):
         self.pod_data = pod_data
         self.pod_name = pod_data['metadata']['name']
         self.namespace = pod_data['metadata']['namespace']
         self.uid = pod_data['metadata']['uid']
+        self.pod_state = pod_state
 
     def pvc_names(self):
         pvc_claims = []
@@ -37,16 +38,16 @@ class Pod(object):
 
 class PodAlert(object):
     def run(self):
-        deadlined_pods = self.get_deadlined_pods()
-        if len(deadlined_pods) == 0:
+        completed_pods = self.get_completed_pods()
+        if len(completed_pods) == 0:
             print "None found. Everything is OK."
             return
-        for pod in deadlined_pods:
-            self.delete_deadline_pod(pod)
+        for pod in completed_pods:
+            self.delete_completed_pod(pod)
 
-    def get_deadlined_pods(self):
+    def get_completed_pods(self):
         """
-        get pods in DeadlineExceeded state
+        get pods in Completed state
         """
         output = subprocess.check_output(['oc', 'get', 'pods', '--all-namespaces', '-o', 'json'])
         pod_json = json.loads(output)
@@ -54,42 +55,34 @@ class PodAlert(object):
         pods = []
         for pod in pod_items:
             pod_status = pod['status']
-            if pod_status['phase'] == 'Failed' and pod_status.get('reason', '') == 'DeadlineExceeded':
-                    pods.append(Pod(pod))
+            if pod_status['phase'] == 'Succeeded' and self.check_terminated_containers(pod_status):
+                pods.append(Pod(pod, 'completed'))
+            elif pod_status['phase'] == 'Failed' and pod_status.get('reason', '') == 'DeadlineExceeded':
+                pod.append(Pod(pod, 'deadline-exceeded'))
         return pods
 
+    def check_terminated_containers(self, pod_status):
+        pcs = pod_status.get('containerStatuses', [])
+        container_states = []
+        for csd in pcs:
+            cs = csd.get('state', {}).get('terminated', {}).get('reason', '')
+            container_states.append(cs)
+        terminated_containers = [cs == 'Completed' for cs in container_states]
+        return len(terminated_containers) == len(pcs)
 
-    def delete_deadline_pod(self, pod):
+
+    def delete_completed_pod(self, pod):
         """
-        Delete deadline pod
+        Delete completed pod
         """
-        print "Deleting pod %s in namespace %s" % (pod.pod_name, pod.namespace)
+        pvc_names = pod.pvc_names()
+        if len(pvc_names) == 0:
+            return
+
+        print "Deleting pod %s in namespace %s in state %s" % (pod.pod_name, pod.namespace, pod.pod_state)
         ret_val = subprocess.check_call(['oc', 'delete', 'pod', pod.pod_name, '-n', pod.namespace])
         if ret_val != 0:
             print "Error deleting pod %s in namespace %s" % (pod.pod_name, pod.namespace)
-
-
-    def report_pod_pv(self, pod):
-        """
-        Print out the information about the pod and PV
-        """
-        pv = self.get_pv_name(pod)
-        format_string = "pod: %s\t namespace: %s\t AWS vol-id:%s\t"
-        print format_string % (pod.pod_name, pod.namespace, pv)
-
-    def get_pv_name(self, pod):
-        pvc_names = pod.pvc_names()
-        if len(pvc_names) == 0:
-            return "No PVCs on pod"
-        pvc_name = pvc_names[0]
-        pv_name = pvc_name.get_pv_name()
-        output = subprocess.check_output(['oc', 'get', 'pv', pv_name, '-o', 'json'])
-        pv_json = json.loads(output)
-        if 'awsElasticBlockStore' in pv_json['spec']:
-            return pv_json['spec']['awsElasticBlockStore']['volumeID']
-        else:
-            return "Not an awsElasticBlockStore volume"
-
 
 class MainApp(object):
     def run(self, argv):
@@ -101,7 +94,7 @@ class MainApp(object):
         wait_time = int(options.period)
         while True:
             now = time.strftime("%Y-%m-%d %H:%M:%S")
-            print "%s *** Checking for pods in DeadlineExceeded state..." % now
+            print "%s *** Checking for pods in Completed state..." % now
             a.run()
             time.sleep(wait_time)
 
