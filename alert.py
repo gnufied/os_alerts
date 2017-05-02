@@ -24,6 +24,7 @@ class Pod(object):
         self.uid = pod_data['metadata']['uid']
         start_time = pod_data['status']['startTime']
         self.start_time =  datetime.datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%SZ')
+        self.host_ip = pod_data['status']['hostIP']
 
     def pvc_names(self):
         pvc_claims = []
@@ -75,8 +76,8 @@ class PodAlert(object):
             output = subprocess.check_output(['oc', 'describe', 'pod', '-n', pod.namespace, pod.pod_name])
             if self.pod_has_pv_event(output):
                 pv = self.get_pv_name(pod)
-                format_string = "pod: %s\t namespace: %s\t AWS vol-id:%s\t stuck since:%s minutes"
-                print format_string % (pod.pod_name, pod.namespace, pv, pod.stuck_since())
+                format_string = "pod: %s\t host:%s\t namespace: %s\t AWS vol-id:%s\t stuck since:%s minutes"
+                print format_string % (pod.pod_name, pod.host_ip, pod.namespace, pv, pod.stuck_since())
 
     def get_pv_name(self, pod):
         pvc_name = pod.pvc_names()[0]
