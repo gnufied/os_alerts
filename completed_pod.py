@@ -58,7 +58,7 @@ class PodAlert(object):
             if pod_status['phase'] == 'Succeeded' and self.check_terminated_containers(pod_status):
                 pods.append(Pod(pod, 'completed'))
             elif pod_status['phase'] == 'Failed' and pod_status.get('reason', '') == 'DeadlineExceeded':
-                pod.append(Pod(pod, 'deadline-exceeded'))
+                pods.append(Pod(pod, 'deadline-exceeded'))
         return pods
 
     def check_terminated_containers(self, pod_status):
