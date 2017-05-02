@@ -21,11 +21,12 @@ class PVC(object):
 
 
 class Pod(object):
-    def __init__(self, pod_data):
+    def __init__(self, pod_data, pod_state):
         self.pod_data = pod_data
         self.pod_name = pod_data['metadata']['name']
         self.namespace = pod_data['metadata']['namespace']
         self.uid = pod_data['metadata']['uid']
+        self.pod_state = pod_state
 
     def pvc_names(self):
         pvc_claims = []
@@ -55,7 +56,9 @@ class PodAlert(object):
         for pod in pod_items:
             pod_status = pod['status']
             if pod_status['phase'] == 'Succeeded' and self.check_terminated_containers(pod_status):
-                pods.append(Pod(pod))
+                pods.append(Pod(pod, 'completed'))
+            elif pod_status['phase'] == 'Failed' and pod_status.get('reason', '') == 'DeadlineExceeded':
+                pod.append(Pod(pod, 'deadline-exceeded'))
         return pods
 
     def check_terminated_containers(self, pod_status):
@@ -76,12 +79,10 @@ class PodAlert(object):
         if len(pvc_names) == 0:
             return
 
-        print "Deleting pod %s in namespace %s" % (pod.pod_name, pod.namespace)
+        print "Deleting pod %s in namespace %s in state %s" % (pod.pod_name, pod.namespace, pod.pod_state)
         ret_val = subprocess.check_call(['oc', 'delete', 'pod', pod.pod_name, '-n', pod.namespace])
         if ret_val != 0:
             print "Error deleting pod %s in namespace %s" % (pod.pod_name, pod.namespace)
-
-
 
 class MainApp(object):
     def run(self, argv):
