@@ -3,7 +3,7 @@ import json
 import datetime
 import time
 import re
-
+import sys
 
 class PVC(object):
     def __init__(self, pvc_name, namespace):
@@ -14,6 +14,7 @@ class PVC(object):
         output = subprocess.check_output(['oc', 'get', 'pvc', self.pvc_name, '-n', self.namespace, '-o', 'json'])
         pvc_json = json.loads(output)
         return pvc_json['spec']['volumeName']
+
 
 
 class Pod(object):
@@ -41,7 +42,9 @@ class PodAlert(object):
     def __init__(self):
         self.FAILED_REGEXP = re.compile(r".+FailedMount.+", re.MULTILINE|re.DOTALL)
 
-    def run(self):
+    def run(self, namespace, pvc_name):
+        self.namespace = namespace
+        self.pvc_name = pvc_name
         creating_pods = self.get_creating_pods()
         for pod in creating_pods:
             pv_check = self.check_for_pv_event(pod)
@@ -51,18 +54,12 @@ class PodAlert(object):
         """
         get pods in creating state
         """
-        output = subprocess.check_output(['oc', 'get', 'pods', '--all-namespaces', '-o', 'json'])
+        output = subprocess.check_output(['oc', 'get', 'pods', '-n', self.namespace, '-o', 'json'])
         pod_json = json.loads(output)
         pod_items = pod_json['items']
         creating_pods = []
         for pod in pod_items:
-            pod_status = pod['status']
-            if pod_status['phase'] == 'Pending':
-                if 'containerStatuses' in pod_status:
-                    pod_container_statuses = pod['status']['containerStatuses']
-                    creating_state = [pod_state['state']['waiting']['reason'] == 'ContainerCreating' for pod_state in pod_container_statuses]
-                    if len(creating_state) > 0:
-                        creating_pods.append(Pod(pod))
+            creating_pods.append(Pod(pod))
 
 
         return creating_pods
@@ -71,16 +68,14 @@ class PodAlert(object):
         """
         Check for PV event
         """
-        time_diff = time.time() - time.mktime(pod.start_time.timetuple())
-        if time_diff >= 300:
-            output = subprocess.check_output(['oc', 'describe', 'pod', '-n', pod.namespace, pod.pod_name])
-            if self.pod_has_pv_event(output):
-                pv_name, pvc_name, pv = self.get_pv_name(pod)
-                format_string = "pod: %s\n host: %s\n namespace: %s\n AWS vol-id: %s\n stuck since:%s minutes"
-                print format_string % (pod.pod_name, pod.host_ip, pod.namespace, pv, pod.stuck_since())
-                print "PVC name : %s" % pvc_name.pvc_name
-                print "PV name : %s" % pv_name
-                print "**********************************\n"
+        pv_name, pvc_name, pv = self.get_pv_name(pod)
+        print "Checking pvc name : %s" % pvc_name.pvc_name
+        if pvc_name.pvc_name == self.pvc_name:
+            format_string = "pod: %s\n host: %s\n namespace: %s\n AWS vol-id: %s"
+            print format_string % (pod.pod_name, pod.host_ip, pod.namespace, pv)
+            print "PVC name : %s" % pvc_name.pvc_name
+            print "PV name : %s" % pv_name
+            print "**********************************\n"
 
     def get_pv_name(self, pod):
         pvc_name = pod.pvc_names()[0]
@@ -95,4 +90,4 @@ class PodAlert(object):
 
 
 a = PodAlert()
-a.run()
+a.run(sys.argv[1], sys.argv[2])
