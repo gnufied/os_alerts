@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import subprocess
 import json
 import datetime
@@ -60,9 +62,11 @@ class PodAlert(object):
             if pod_status['phase'] == 'Pending':
                 if 'containerStatuses' in pod_status:
                     pod_container_statuses = pod['status']['containerStatuses']
-                    creating_state = [pod_state['state']['waiting']['reason'] == 'ContainerCreating' for pod_state in pod_container_statuses]
-                    if len(creating_state) > 0:
-                        creating_pods.append(Pod(pod))
+                    for pod_state in pod_container_statuses:
+                        reason = pod_state.get('state', {}).get('waiting', {}).get('reason', '')
+                        if reason == 'ContainerCreating':
+                            creating_pods.append(Pod(pod))
+                            break
 
 
         return creating_pods
