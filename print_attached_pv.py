@@ -51,14 +51,12 @@ class AttachedVolume(object):
             exec_command = ["ossh", "-o", "StrictHostKeyChecking=no", "-c", grep_command, volume_info.instance_id]
             print exec_command
             output = subprocess.check_output(exec_command)
-            if self.check_for_mount_point(output, volume_info):
+            if volume_info.device_name in output:
                 print "%s : %s : %s" % (volume_info.ebs_id, volume_info.instance_id, volume_info.device_name)
         except Exception, e:
             print e
             print "Error checking mount status for %s and host %s" % (volume_info.ebs_id, volume_info.instance_id)
 
-    def check_for_mount_point(self, output, volume_info):
-        return true
 
 
 
