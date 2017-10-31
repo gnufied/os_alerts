@@ -22,7 +22,8 @@ class AttachedVolume(object):
     def run(self):
         for line in sys.stdin:
             if self.pvc_regex.match(line):
-                print line
+                line = line.strip()
+                print "-- checking %s" % line
                 pv_array = line.split(":")
                 pv_name = pv_array[0].strip()
                 ebs_id = pv_array[1].strip()
@@ -40,7 +41,8 @@ class AttachedVolume(object):
                 instance_id = attachment["InstanceId"]
                 device_name = attachment["Device"]
                 volume_info = VolumeInfo(pv_name, ebs_id, instance_id, device_name)
-                self.check_for_mount(volume_info)
+                if not self.check_for_mount(volume_info):
+                    print "%s %s %s" % (volume.ebs_id, volume_info.instance_id, volume_info.device_name)
         except Exception, e:
             print "Volume not found"
 
@@ -51,12 +53,15 @@ class AttachedVolume(object):
             print "Checking %s on node %s" % (volume_info.ebs_id, volume_info.instance_id)
             grep_command = "grep %s /proc/mounts" % (volume_info.ebs_id)
             exec_command = ["ossh", "-o", "StrictHostKeyChecking=no", "-c", grep_command, volume_info.instance_id]
-            print exec_command
             output = subprocess.check_output(exec_command)
-            if volume_info.device_name not in output:
-                print "%s : %s : %s" % (volume_info.ebs_id, volume_info.instance_id, volume_info.device_name)
+            if volume_info.device_name in output:
+                return True
+            else:
+                return False
         except Exception, e:
-            pass
+            return False
+
+
 
 
 
