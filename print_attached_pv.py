@@ -23,7 +23,6 @@ class AttachedVolume(object):
         for line in sys.stdin.readlines():
             if self.pvc_regex.match(line):
                 line = line.strip()
-                print "-- checking %s" % line
                 pv_array = line.split(":")
                 pv_name = pv_array[0].strip()
                 ebs_id = pv_array[1].strip()
@@ -41,8 +40,9 @@ class AttachedVolume(object):
                 instance_id = attachment["InstanceId"]
                 device_name = attachment["Device"]
                 volume_info = VolumeInfo(pv_name, ebs_id, instance_id, device_name)
-                if not self.check_for_mount(volume_info):
-                    print "%s %s %s" % (volume.ebs_id, volume_info.instance_id, volume_info.device_name)
+                t = self.check_for_mount(volume_info)
+                if not t:
+                    print "=== %s %s %s" % (volume.ebs_id, volume_info.instance_id, volume_info.device_name)
         except Exception, e:
             print "Volume not found"
 
@@ -59,6 +59,7 @@ class AttachedVolume(object):
             else:
                 return False
         except Exception, e:
+            print "*** Returning false"
             return False
 
 
