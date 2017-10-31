@@ -40,11 +40,18 @@ class AttachedVolume(object):
                 instance_id = attachment["InstanceId"]
                 device_name = attachment["Device"]
                 volume_info = VolumeInfo(pv_name, ebs_id, instance_id, device_name)
-                t = self.check_for_mount(volume_info)
-                if not t:
-                    print "=== %s %s %s" % (volume.ebs_id, volume_info.instance_id, volume_info.device_name)
+                if not self.check_for_mount(volume_info):
+                    print "Detaching volume %s from node %s" % (ebs_id, volume_info.instance_id)
+                    self.detach_volumes(ebs_id)
         except Exception, e:
             print "Volume not found"
+
+    def detach_volumes(self, ebs_id):
+        try:
+            subprocess.check_output(["aws", "ec2", "detach-volume", "--volume-id", ebs_id, "--profile", self.profile])
+        except Exception, e:
+            print "Error while detaching volume %s" % (ebs_id)
+
 
     def check_for_mount(self, volume_info):
         try:
