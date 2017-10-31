@@ -20,7 +20,7 @@ class AttachedVolume(object):
         self.pvc_regex = re.compile("^pvc")
 
     def run(self):
-        for line in sys.stdin:
+        for line in sys.stdin.readlines():
             if self.pvc_regex.match(line):
                 line = line.strip()
                 print "-- checking %s" % line
