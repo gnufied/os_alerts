@@ -47,7 +47,7 @@ class AttachedVolume(object):
         try:
             # running command
             # ossh -o "StrictHostKeyChecking=no" -c "grep \/dev\/xvdbz /proc/mounts" i-foobar
-            grep_command = "'grep %s /proc/mounts'" % (volume_info.ebs_id)
+            grep_command = "\"grep %s /proc/mounts\"" % (volume_info.ebs_id)
             exec_command = ["ossh", "-o", "StrictHostKeyChecking=no", "-c", grep_command, volume_info.instance_id]
             print exec_command
             output = subprocess.check_output(exec_command)
