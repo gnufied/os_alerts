@@ -47,13 +47,14 @@ class AttachedVolume(object):
         try:
             # running command
             # ossh -o "StrictHostKeyChecking=no" -c "grep \/dev\/xvdbz /proc/mounts" i-foobar
-            grep_command = "\"grep %s /proc/mounts\"" % (volume_info.ebs_id)
+            grep_command = "grep %s /proc/mounts" % (volume_info.ebs_id)
             exec_command = ["ossh", "-o", "StrictHostKeyChecking=no", "-c", grep_command, volume_info.instance_id]
             print exec_command
             output = subprocess.check_output(exec_command)
             if self.check_for_mount_point(output, volume_info):
                 print "%s : %s : %s" % (volume_info.ebs_id, volume_info.instance_id, volume_info.device_name)
         except Exception, e:
+            print e
             print "Error checking mount status for %s and host %s" % (volume_info.ebs_id, volume_info.instance_id)
 
     def check_for_mount_point(self, output, volume_info):
