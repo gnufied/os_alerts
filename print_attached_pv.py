@@ -39,9 +39,7 @@ class AttachedVolume(object):
                 attachment = volume["Attachments"][0]
                 instance_id = attachment["InstanceId"]
                 device_name = attachment["Device"]
-                volume_info = VolumeInfo(pv_name, ebs_id, instance_id, device_name)
-                if not self.check_for_mount(volume_info):
-                    print "Detaching volume %s from node %s" % (ebs_id, volume_info.instance_id)
+                print "pv: %s EBS: %s node: %s device: %s" % (pv_name, ebs_id, instance_id, device_name)
         except Exception, e:
             print "Volume not found"
 
