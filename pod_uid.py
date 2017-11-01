@@ -39,7 +39,7 @@ class PodUID(object):
         """
         get pods in creating state
         """
-        output = subprocess.check_output(['oc', 'get', 'pods', '-n', self.namespace, '-o', 'json'])
+        output = subprocess.check_output(['oc', 'get', 'pods', '--all-namespaces', '-o', 'json'])
         pod_json = json.loads(output)
         pod_items = pod_json['items']
         creating_pods = []
