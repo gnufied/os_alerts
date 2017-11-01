@@ -12,9 +12,6 @@ class Pod(object):
         self.pod_name = pod_data['metadata']['name']
         self.namespace = pod_data['metadata']['namespace']
         self.uid = pod_data['metadata']['uid']
-        start_time = pod_data['status']['startTime']
-        self.start_time =  datetime.datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%SZ')
-        self.host_ip = pod_data['status']['hostIP']
 
     def pvc_names(self):
         pvc_claims = []
@@ -22,10 +19,6 @@ class Pod(object):
             if 'persistentVolumeClaim' in volume:
                 pvc_claims.append(PVC(volume['persistentVolumeClaim']['claimName'], self.namespace))
         return pvc_claims
-
-    def stuck_since(self):
-        time_diff = time.time() - time.mktime(self.start_time.timetuple())
-        return repr(time_diff / 60.00)
 
 
 class PodUID(object):
