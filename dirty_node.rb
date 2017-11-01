@@ -20,7 +20,7 @@ class DirtyNode
     end
 
     @dirty_nodes.each do |node, val|
-      puts node
+      reboot_node(node)
     end
   end
 
