@@ -1,8 +1,9 @@
 require 'json'
 
 class DirtyNode
-  def initialize(file_path)
+  def initialize(file_path, profile)
     @file_path = file_path
+    @profile = profile
   end
 
   def print_dirty_nodes()
@@ -23,6 +24,12 @@ class DirtyNode
     end
   end
 
+  def reboot_node(node)
+    command = "aws ec2 reboot-instances --instance-ids #{node} --profile=#{@profile}"
+    puts "Running - #{command}"
+    system(command)
+  end
+
   def check_attaching_volume(volume)
     attachments = volume["Attachments"]
 
@@ -36,5 +43,5 @@ class DirtyNode
 end
 
 
-a = DirtyNode.new(ARGV[0])
+a = DirtyNode.new(ARGV[0], ARGV[1])
 a.print_dirty_nodes
