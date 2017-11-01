@@ -27,6 +27,8 @@ class PodUID(object):
         for pod in all_pods:
             if pod.uid == pod_uid:
                 print "Pod %s is in %s namespace" % (pod.pod_name, pod.namespace)
+                print "=================="
+                print pod.pod_data
 
     def get_all_pods(self):
         """
