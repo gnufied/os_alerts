@@ -36,5 +36,5 @@ class DirtyNode
 end
 
 
-a = DirtyNode.new(ARGV[1])
+a = DirtyNode.new(ARGV[0])
 a.print_dirty_nodes
