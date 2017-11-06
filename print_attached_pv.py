@@ -67,11 +67,6 @@ class AttachedVolume(object):
             print "*** Returning false"
             return False
 
-
-
-
-
-
 if __name__ == "__main__":
     a = AttachedVolume(sys.argv[1], sys.argv[2])
     a.run()

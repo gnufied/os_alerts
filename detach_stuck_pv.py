@@ -17,7 +17,7 @@ class VolumeInfo(object):
 class AttachedVolume(object):
     def __init__(self, profile, region):
         self.profile = profile
-       self.region = region
+        self.region = region
         self.pvc_regex = re.compile("^pvc")
 
     def run(self):
@@ -67,11 +67,6 @@ class AttachedVolume(object):
                 return False
         except Exception, e:
             return False
-
-
-
-
-
 
 if __name__ == "__main__":
     a = AttachedVolume(sys.argv[1], sys.argv[2])
