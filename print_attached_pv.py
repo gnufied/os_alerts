@@ -15,8 +15,9 @@ class VolumeInfo(object):
         self.device_name = device_name
 
 class AttachedVolume(object):
-    def __init__(self, profile):
+    def __init__(self, profile, region):
         self.profile = profile
+        self.region = region
         self.pvc_regex = re.compile("^pvc")
 
     def run(self):
@@ -31,7 +32,7 @@ class AttachedVolume(object):
 
     def check_volume(self, ebs_id, pv_name):
         try:
-            output = subprocess.check_output(["aws", "ec2", "describe-volumes", "--volume-ids", ebs_id, "--profile", self.profile])
+            output = subprocess.check_output(["aws", "ec2", "describe-volumes", "--volume-ids", ebs_id, "--profile", self.profile, "--region", self.region])
             ebs_data = json.loads(output)
             volume = ebs_data["Volumes"][0]
             state = volume["State"]
@@ -45,7 +46,7 @@ class AttachedVolume(object):
 
     def detach_volumes(self, ebs_id):
         try:
-            subprocess.check_output(["aws", "ec2", "detach-volume", "--volume-id", ebs_id, "--profile", self.profile])
+            subprocess.check_output(["aws", "ec2", "detach-volume", "--volume-id", ebs_id, "--profile", self.profile, "--region", self.region])
         except Exception, e:
             print "Error while detaching volume %s" % (ebs_id)
 
@@ -72,5 +73,5 @@ class AttachedVolume(object):
 
 
 if __name__ == "__main__":
-    a = AttachedVolume(sys.argv[1])
+    a = AttachedVolume(sys.argv[1], sys.argv[2])
     a.run()
