@@ -62,7 +62,7 @@ class AttachedVolume(object):
         for node, volume in dirty_nodes.iteritems():
             print "Node %s has dirty volumes " % node
 
-        reboot_nodes_answer = self.yes_no("Do you want to reboot those nodes")
+        reboot_nodes_answer = self.yes_no("Do you want to reboot those nodes :")
         if reboot_nodes_answer:
             for node, volume in dirty_nodes.iteritems():
                 print "Rebooting node %s" % node
