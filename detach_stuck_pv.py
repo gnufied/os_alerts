@@ -57,12 +57,15 @@ class AttachedVolume(object):
             for volume in volumes:
                 if self.stuck_in_attaching(volume):
                     attachment = volume["Attachments"][0]
+                    instance = attachment["InstanceId"]
+                    volume_id = attachment["VolumeId"]
+                    print "Found a attaching volume %s on node %s" % (volume_id, instance)
                     dirty_nodes[attachment["InstanceId"]] = volume
 
         for node, volume in dirty_nodes.iteritems():
             print "Node %s has dirty volumes " % node
 
-        reboot_nodes_answer = self.yes_no("Do you want to reboot those nodes :")
+        reboot_nodes_answer = self.yes_no("Do you want to reboot those nodes : ")
         if reboot_nodes_answer:
             for node, volume in dirty_nodes.iteritems():
                 print "Rebooting node %s" % node
@@ -72,6 +75,7 @@ class AttachedVolume(object):
     def yes_no(self, answer):
         yes = set(['yes','y', 'ye'])
         no = set(['no','n'])
+        sys.stdin = open('/dev/tty')
 
         while True:
             choice = raw_input(answer).lower()
