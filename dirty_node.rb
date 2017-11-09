@@ -56,9 +56,9 @@ class DirtyNode
 
   def stuck_in_attaching?(attach_time_str)
     attach_time = Time.parse(attach_time_str)
-    time_diff = (Time.now() - attach_time)/3600
-    # if time difference is greater than 2 hours
-    time_diff > 2
+    time_diff = (Time.now() - attach_time)/60
+    # if time difference is greater than 30 minutes
+    time_diff > 30
   end
 end
 
