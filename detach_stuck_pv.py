@@ -70,7 +70,7 @@ class AttachedVolume(object):
 
 
     def yes_no(self, answer):
-        yes = set(['yes','y', 'ye', ''])
+        yes = set(['yes','y', 'ye'])
         no = set(['no','n'])
 
         while True:
