@@ -43,9 +43,15 @@ class DirtyNode
     if !attachments.empty?
       attachment = attachments[0]
       attachment_state = attachment["State"]
+      instance_id = attachment["InstanceId"]
+      volume_id = attachment["VolumeId"]
       if attachment_state == "attaching"
         attach_time_str = attachment["AttachTime"]
-        stuck_in_attaching?(attach_time_str)
+        if stuck_in_attaching?(attach_time_str)
+          puts "Volume #{volume_id} is stuck to #{instance_id}"
+          return true
+        end
+        false
       else
         false
       end
