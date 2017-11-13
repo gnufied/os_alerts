@@ -7,6 +7,8 @@ import time
 import re
 import sys
 from datetime import datetime
+import argparse
+
 
 class VolumeInfo(object):
     def __init__(self, pv_name, ebs_id, instance_id, device_name):
@@ -16,20 +18,34 @@ class VolumeInfo(object):
         self.device_name = device_name
 
 class AttachedVolume(object):
-    def __init__(self, profile, region):
+    def __init__(self, profile, region, unused_volume_file):
         self.profile = profile
         self.region = region
+        self.unused_volume_file = unused_volume_file
         self.pvc_regex = re.compile("^pvc")
 
     def run(self):
-        for line in sys.stdin.readlines():
-            if self.pvc_regex.match(line):
-                line = line.strip()
-                pv_array = line.split(":")
-                pv_name = pv_array[0].strip()
-                ebs_id = pv_array[1].strip()
-                self.check_volume(ebs_id, pv_name)
+        print "Searching for volumes in attaching state"
         self.check_attaching_volumes()
+
+        print "---------- WARNING ----------"
+        print "Next step performs detach of unused volumes from all nodes in cluster"
+        print "If number of attaching volume is same as zabbix alerts, you may not need this step"
+
+        detach_volume_answer = self.yes_no("Do you want to detach unused volumes : ")
+
+        if detach_volume_answer:
+            with open(self.unused_volume_file) as f:
+                volume_lines = f.readlines()
+
+            for line in volume_lines:
+                if self.pvc_regex.match(line):
+                    line = line.strip()
+                    pv_array = line.split(":")
+                    pv_name = pv_array[0].strip()
+                    ebs_id = pv_array[1].strip()
+                    self.check_volume(ebs_id, pv_name)
+
 
 
     def check_volume(self, ebs_id, pv_name):
@@ -142,5 +158,10 @@ class AttachedVolume(object):
             return False
 
 if __name__ == "__main__":
-    a = AttachedVolume(sys.argv[1], sys.argv[2])
+    parser = argparse.ArgumentParser(description='Clean up stuck EBS volumes')
+    parser.add_argument('unused_volumes', metavar='filename', help='Name of unused volume file')
+    parser.add_argument('--region', help='AWS region')
+    parser.add_argument('--profile', help="AWS profile")
+    args = parser.parse_args()
+    a = AttachedVolume(args.profile, args.region, args.unused_volumes)
     a.run()
