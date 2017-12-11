@@ -32,7 +32,7 @@ class AttachedVolume(object):
         print "Next step performs detach of unused volumes from all nodes in cluster"
         print "If number of attaching volume is same as zabbix alerts, you may not need this step"
 
-        detach_volume_answer = self.yes_no("Do you want to detach unused volumes : ")
+        detach_volume_answer = self.yes_no("Do you want to detach unused volumes (y/n): ")
 
         if detach_volume_answer:
             with open(self.unused_volume_file) as f:
@@ -46,6 +46,8 @@ class AttachedVolume(object):
                     ebs_id = pv_array[1].strip()
                     self.check_volume(ebs_id, pv_name)
 
+    def find_failed_pv(self):
+        pass
 
 
     def check_volume(self, ebs_id, pv_name):
@@ -81,7 +83,7 @@ class AttachedVolume(object):
         for node, volume in dirty_nodes.iteritems():
             print "Node %s has dirty volumes " % node
 
-        reboot_nodes_answer = self.yes_no("Do you want to reboot those nodes : ")
+        reboot_nodes_answer = self.yes_no("Do you want to reboot those nodes (y/n): ")
         if reboot_nodes_answer:
             for node, volume in dirty_nodes.iteritems():
                 print "Rebooting node %s" % node
