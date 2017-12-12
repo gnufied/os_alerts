@@ -39,10 +39,11 @@ class Pod(object):
         self.pod_name = pod_data['metadata']['name']
         self.namespace = pod_data['metadata']['namespace']
         self.uid = pod_data['metadata']['uid']
-        start_time = pod_data.get('status', {}).get('startTime', None)
+        self.status = pod_data.get('status', {})
+        start_time = self.status.get('startTime', None)
         if start_time:
             self.start_time =  datetime.datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%SZ')
-        host_ip = pod_data.get('status', {}).get('hostIP', None)
+        host_ip = self.status.get('hostIP', None)
         if host_ip:
             self.host_ip = host_ip
 
@@ -100,14 +101,14 @@ class StuckPods(object):
         "pods in container creating state"
         creating_pods = []
         for pod in all_pods:
-            pod_status = pod['status']
+            pod_status = pod.status
             if pod_status['phase'] == 'Pending':
                 if 'containerStatuses' in pod_status:
                     pod_container_statuses = pod['status']['containerStatuses']
                     for pod_state in pod_container_statuses:
                         reason = pod_state.get('state', {}).get('waiting', {}).get('reason', '')
                         if reason == 'ContainerCreating':
-                            creating_pods.append(Pod(pod))
+                            creating_pods.append(pod)
                             break
         return creating_pods
 
