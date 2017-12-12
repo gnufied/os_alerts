@@ -39,6 +39,12 @@ class Pod(object):
         self.pod_name = pod_data['metadata']['name']
         self.namespace = pod_data['metadata']['namespace']
         self.uid = pod_data['metadata']['uid']
+        start_time = pod_data.get('status', {}).get('startTime', None)
+        if start_time:
+            self.start_time =  datetime.datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%SZ')
+        host_ip = pod_data.get('status', {}).get('hostIP', None)
+        if host_ip:
+            self.host_ip = host_ip
 
     def pvc_names(self):
         pvc_claims = []
@@ -55,10 +61,17 @@ class Pod(object):
 class StuckPods(object):
     PVC_CACHE = {}
 
+    def __init__(self):
+        self.FAILED_REGEXP = re.compile(r".+FailedMount.+", re.MULTILINE|re.DOTALL)
+
     def run(self):
         all_pods = self.get_all_pods()
         all_pv = self.get_all_pv()
         self.get_all_pvc()
+
+        creating_pods = self.get_creating_pods(all_pods)
+        for pod in creating_pods:
+            self.check_for_pv_event(pod)
 
         unused_volumes = self.get_unused_volumes(all_pods, all_pv)
         for pv in unused_volumes:
@@ -83,6 +96,44 @@ class StuckPods(object):
             pvc_object = PersistentVolumeClaim(pvc)
             StuckPods.PVC_CACHE[pvc_object.pvc_name + ":" + pvc_object.namespace] = pvc_object
 
+    def get_creating_pods(self, all_pods):
+        "pods in container creating state"
+        creating_pods = []
+        for pod in all_pods:
+            pod_status = pod['status']
+            if pod_status['phase'] == 'Pending':
+                if 'containerStatuses' in pod_status:
+                    pod_container_statuses = pod['status']['containerStatuses']
+                    for pod_state in pod_container_statuses:
+                        reason = pod_state.get('state', {}).get('waiting', {}).get('reason', '')
+                        if reason == 'ContainerCreating':
+                            creating_pods.append(Pod(pod))
+                            break
+        return creating_pods
+
+    def check_for_pv_event(self, pod):
+        """
+        Check for PV event
+        """
+        if not pod.start_time:
+            return
+
+        time_diff = time.time() - time.mktime(pod.start_time.timetuple())
+        if time_diff >= 600:
+            output = subprocess.check_output(['oc', 'describe', 'pod', '-n', pod.namespace, pod.pod_name])
+            if self.pod_has_pv_event(output):
+                pv = self.get_pv_name(pod)
+                print "%s : %s" % (pv.pv_name, pv.ebs_id)
+
+    def get_pv_name(self, pod):
+        pvc_name = pod.pvc_names()[0]
+        pv_name = pvc_name.get_pv_name()
+        output = subprocess.check_output(['oc', 'get', 'pv', pv_name, '-o', 'json'])
+        pv_json = json.loads(output)
+        return PersistentVolume(pv_json)
+
+    def pod_has_pv_event(self, output):
+        return self.FAILED_REGEXP.match(output.strip())
 
 
     def get_all_pv(self):
