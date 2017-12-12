@@ -133,8 +133,8 @@ class StuckPods(object):
     def get_pv_name(self, pod):
         pvc_names = pod.pvc_names()
         if len(pvc_names) > 0:
-            pvc_name = pod.pvc_names()[0]
-            pvc_object = self.check_pvc_cache(pvc_name, pod.namespace)
+            t_pvc = pod.pvc_names()[0]
+            pvc_object = self.check_pvc_cache(t_pvc.pvc_name, pod.namespace)
             if pvc_object:
                 pv_name = pvc_object.volume
                 return StuckPods.PV_CACHE.get(pv_name, None)
