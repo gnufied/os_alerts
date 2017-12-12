@@ -61,6 +61,7 @@ class Pod(object):
 
 class StuckPods(object):
     PVC_CACHE = {}
+    PV_CACHE = {}
 
     def __init__(self):
         self.FAILED_REGEXP = re.compile(r".+FailedMount.+", re.MULTILINE|re.DOTALL)
@@ -71,10 +72,12 @@ class StuckPods(object):
         self.get_all_pvc()
 
         creating_pods = self.get_creating_pods(all_pods)
+        print "********** Getting container creating pod **********"
         for pod in creating_pods:
             self.check_for_pv_event(pod)
 
         unused_volumes = self.get_unused_volumes(all_pods, all_pv)
+        print "********** Getting unused volumes **********"
         for pv in unused_volumes:
             print "%s : %s" % (pv.pv_name, pv.ebs_id)
 
@@ -131,12 +134,11 @@ class StuckPods(object):
         pvc_names = pod.pvc_names()
         if len(pvc_names) > 0:
             pvc_name = pod.pvc_names()[0]
-            pv_name = pvc_name.get_pv_name()
-            output = subprocess.check_output(['oc', 'get', 'pv', pv_name, '-o', 'json'])
-            pv_json = json.loads(output)
-            return PersistentVolume(pv_json)
-        else:
-            return None
+            pvc_object = self.check_pvc_cache(pvc_name, pod.namespace)
+            if pvc_object:
+                pv_name = pvc_object.volume
+                return StuckPods.PV_CACHE.get(pv_name, None)
+        return None
 
     def pod_has_pv_event(self, output):
         return self.FAILED_REGEXP.match(output.strip())
@@ -149,6 +151,7 @@ class StuckPods(object):
         all_pv = []
         for pv in pv_items:
             pv_object = PersistentVolume(pv)
+            StuckPods.PV_CACHE[pv_object.pv_name] = pv_object
             all_pv.append(pv_object)
         return all_pv
 
