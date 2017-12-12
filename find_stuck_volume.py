@@ -104,7 +104,7 @@ class StuckPods(object):
             pod_status = pod.status
             if pod_status['phase'] == 'Pending':
                 if 'containerStatuses' in pod_status:
-                    pod_container_statuses = pod['status']['containerStatuses']
+                    pod_container_statuses = pod_status['containerStatuses']
                     for pod_state in pod_container_statuses:
                         reason = pod_state.get('state', {}).get('waiting', {}).get('reason', '')
                         if reason == 'ContainerCreating':
