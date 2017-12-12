@@ -72,12 +72,10 @@ class StuckPods(object):
         self.get_all_pvc()
 
         creating_pods = self.get_creating_pods(all_pods)
-        print "********** Getting container creating pod **********"
         for pod in creating_pods:
             self.check_for_pv_event(pod)
 
         unused_volumes = self.get_unused_volumes(all_pods, all_pv)
-        print "********** Getting unused volumes **********"
         for pv in unused_volumes:
             print "%s : %s" % (pv.pv_name, pv.ebs_id)
 
