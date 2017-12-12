@@ -124,14 +124,19 @@ class StuckPods(object):
             output = subprocess.check_output(['oc', 'describe', 'pod', '-n', pod.namespace, pod.pod_name])
             if self.pod_has_pv_event(output):
                 pv = self.get_pv_name(pod)
-                print "%s : %s" % (pv.pv_name, pv.ebs_id)
+                if pv:
+                    print "%s : %s" % (pv.pv_name, pv.ebs_id)
 
     def get_pv_name(self, pod):
-        pvc_name = pod.pvc_names()[0]
-        pv_name = pvc_name.get_pv_name()
-        output = subprocess.check_output(['oc', 'get', 'pv', pv_name, '-o', 'json'])
-        pv_json = json.loads(output)
-        return PersistentVolume(pv_json)
+        pvc_names = pod.pvc_names()
+        if len(pvc_names) > 0:
+            pvc_name = pod.pvc_names()[0]
+            pv_name = pvc_name.get_pv_name()
+            output = subprocess.check_output(['oc', 'get', 'pv', pv_name, '-o', 'json'])
+            pv_json = json.loads(output)
+            return PersistentVolume(pv_json)
+        else:
+            return None
 
     def pod_has_pv_event(self, output):
         return self.FAILED_REGEXP.match(output.strip())
@@ -150,7 +155,6 @@ class StuckPods(object):
     def check_pvc_cache(self, pvc_name, namespace):
         key = pvc_name + ":" + namespace
         return StuckPods.PVC_CACHE.get(key, None)
-
 
 
     def get_unused_volumes(self, all_pods, all_pv):
