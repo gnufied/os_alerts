@@ -5,7 +5,7 @@ import json
 import datetime
 import time
 import re
-
+import argparse
 
 class PVC(object):
     def __init__(self, pvc_name, namespace):
@@ -17,6 +17,20 @@ class PVC(object):
         pvc_json = json.loads(output)
         return pvc_json['spec']['volumeName']
 
+class RC(object):
+    """
+    ReplicationController
+    """
+    def __init__(self, name, namespace):
+        self.name = name
+        self.namespace = namespace
+        self.load()
+
+    def load(self):
+        output = subprocess.check_output(['oc', 'get', 'rc', self.name, '-n', self.namespace, '-o', 'json'])
+        j = json.loads(output)
+        self.replicas = j['status'].get('replicas', '')
+        self.available_replicas = j['status'].get('availableReplicas', '0')
 
 class Pod(object):
     def __init__(self, pod_data):
@@ -27,6 +41,11 @@ class Pod(object):
         start_time = pod_data['status']['startTime']
         self.start_time =  datetime.datetime.strptime(start_time, '%Y-%m-%dT%H:%M:%SZ')
         self.host_ip = pod_data['status']['hostIP']
+        self.rc_name = ""
+        if pod_data['metadata'].has_key('annotations') and pod_data['metadata']['annotations'].has_key('kubernetes.io/created-by'):
+            created_by_reference = json.loads(pod_data['metadata']['annotations']['kubernetes.io/created-by'])
+            if created_by_reference['reference']['kind'] == 'ReplicationController':
+                self.rc_name = created_by_reference['reference']['name']
 
     def pvc_names(self):
         pvc_claims = []
@@ -79,20 +98,40 @@ class PodAlert(object):
         if time_diff >= 300:
             output = subprocess.check_output(['oc', 'describe', 'pod', '-n', pod.namespace, pod.pod_name])
             if self.pod_has_pv_event(output):
-                pv_name, pvc_name, pv = self.get_pv_name(pod)
-                print "%s : %s" % (pv_name, pv)
+                pv_name, pvc_name, ebs, rc_name, rc_count = self.get_pv_name(pod)
+                print "Pod: %s %s PVC: %s PV: %s AWS ID: %s RC: %s %s" % (pod.namespace, pod.pod_name, pvc_name, pv_name, ebs, rc_name, rc_count)
 
     def get_pv_name(self, pod):
-        pvc_name = pod.pvc_names()[0]
-        pv_name = pvc_name.get_pv_name()
+        pvc = pod.pvc_names()[0]
+        pv_name = pvc.get_pv_name()
         output = subprocess.check_output(['oc', 'get', 'pv', pv_name, '-o', 'json'])
         pv_json = json.loads(output)
-        return pv_name, pvc_name, pv_json['spec']['awsElasticBlockStore']['volumeID']
+        rc_name = ""
+        rc_count = ""
+        if pod.rc_name != "":
+            rc = RC(pod.rc_name, pod.namespace)
+            rc_name = rc.name
+            rc_count = "%s/%s" % (rc.available_replicas, rc.replicas)
+        return pv_name, pvc.pvc_name, pv_json['spec']['awsElasticBlockStore']['volumeID'], rc_name, rc_count
 
 
     def pod_has_pv_event(self, output):
         return self.FAILED_REGEXP.match(output.strip())
 
+description="""Prints all pods that are ContainerCreating and have FailedMount event.
 
+Pod: pod namespace / name
+PVC: PVC name
+PV: PV name
+AWS ID: ID of EBS volume in Amazon
+RC: ReplicationController that created the pod + current replica / requested replica count
+
+When a volume is used in Pod template in ReplicationController (Deployment,
+DeploymentConfig, ...), only one pod in the RC can actually use the volume.
+In other words, anything else than '/1' is likely user error.
+"""
+
+parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.parse_args()
 a = PodAlert()
 a.run()
